@@ -85,6 +85,7 @@ async def part3_testing():
 
     from testing.testing import run_comparison, print_comparison, SecurityTestPipeline
     from agents.agent import create_unsafe_agent
+    from core.defense_pipeline import run_assignment_tests
 
     # TODO 10: Before vs after comparison
     print("\n--- TODO 10: Before/After Comparison ---")
@@ -103,6 +104,9 @@ async def part3_testing():
         pipeline.print_report(results)
     else:
         print("Complete TODO 11 to see the pipeline report.")
+
+    print("\n--- Assignment 11: Production Defense-in-Depth Pipeline ---")
+    run_assignment_tests(export_path="audit_log.json")
 
 
 def part4_hitl():

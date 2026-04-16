@@ -38,9 +38,15 @@ def detect_injection(user_input: str) -> bool:
         True if injection detected, False otherwise
     """
     INJECTION_PATTERNS = [
-        # TODO: Add at least 5 regex patterns
-        # Example:
-        # r"ignore (all )?(previous|above) instructions",
+        r"ignore\s+(all\s+)?(previous|above|prior)\s+instructions?",
+        r"you\s+are\s+now\s+\w+",
+        r"system\s+prompt",
+        r"reveal\s+(your\s+)?(instructions?|prompt|secrets?|credentials?)",
+        r"pretend\s+you\s+are",
+        r"act\s+as\s+(a\s+|an\s+)?(unrestricted|jailbroken|developer|admin)",
+        r"(bypass|override)\s+(safety|guardrails|policy|policies)",
+        r"(b[oỏ]\s*qua|quên)\s+(mọi\s+)?hướng\s+dẫn",
+        r"(mật\s+khẩu|password|api\s*key|credentials?)",
     ]
 
     for pattern in INJECTION_PATTERNS:
@@ -70,12 +76,23 @@ def topic_filter(user_input: str) -> bool:
     """
     input_lower = user_input.lower()
 
-    # TODO: Implement logic:
-    # 1. If input contains any blocked topic -> return True
-    # 2. If input doesn't contain any allowed topic -> return True
-    # 3. Otherwise -> return False (allow)
+    # Empty, whitespace-only, and emoji/no-word inputs are treated as off-topic.
+    if not input_lower.strip() or not re.search(r"[a-zA-Z0-9à-ỹÀ-Ỹ]", input_lower):
+        return True
 
-    pass  # Replace with your implementation
+    if any(topic in input_lower for topic in BLOCKED_TOPICS):
+        return True
+
+    # Also block explicit data-extraction requests even if they mention banking words.
+    risky_intents = [
+        "system prompt", "admin password", "api key", "credentials", "sql injection",
+        "select *", "database connection string", "bỏ qua", "ignore all",
+    ]
+    if any(intent in input_lower for intent in risky_intents):
+        return True
+
+    has_allowed_topic = any(topic in input_lower for topic in ALLOWED_TOPICS)
+    return not has_allowed_topic
 
 
 # ============================================================
@@ -134,8 +151,19 @@ class InputGuardrailPlugin(base_plugin.BasePlugin):
         # 2. Call topic_filter(text)
         #    - If True: increment blocked_count, return self._block_response("...")
         # 3. If both are False: return None (let message through)
+        if detect_injection(text):
+            self.blocked_count += 1
+            return self._block_response(
+                "Request blocked by Input Guardrail: suspected prompt injection pattern."
+            )
 
-        pass  # Replace with your implementation
+        if topic_filter(text):
+            self.blocked_count += 1
+            return self._block_response(
+                "Request blocked by Input Guardrail: only VinBank-safe banking topics are allowed."
+            )
+
+        return None
 
 
 # ============================================================
